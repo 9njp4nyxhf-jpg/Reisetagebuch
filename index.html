@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unser 6-Wochen Reisetagebuch</title>
+    
+    <!-- Leaflet CSS für die Karte -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        /* Grunddesign im gemütlichen Boho-/Natur-Stil */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f1ea; /* Sanftes Beige */
+            color: #4a3f35; /* Warmes Dunkelbraun */
+        }
+
+        header {
+            text-align: center;
+            padding: 20px;
+            background-color: #d96b43; /* Warmes Terrakotta/Rostrot */
+            color: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            letter-spacing: 1px;
+        }
+
+        header p {
+            margin: 5px 0 0 0;
+            font-style: italic;
+            opacity: 0.9;
+        }
+
+        /* Karten-Container */
+        #map {
+            width: 100vw;
+            height: calc(100vh - 90px); /* Füllt den Rest des Bildschirms */
+        }
+
+        /* Styling für die Tagebuch-Popups */
+        .diary-popup {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            max-width: 280px;
+            color: #4a3f35;
+        }
+
+        .diary-popup h3 {
+            margin: 0 0 5px 0;
+            color: #d96b43;
+            font-size: 1.2rem;
+            border-bottom: 2px solid #f4f1ea;
+            padding-bottom: 5px;
+        }
+
+        .diary-popup .meta {
+            font-size: 0.85rem;
+            color: #8c7a6b;
+            margin-bottom: 8px;
+            font-style: italic;
+        }
+
+        .diary-popup p {
+            font-size: 0.95rem;
+            line-height: 1.4;
+            margin: 0 0 10px 0;
+        }
+
+        /* Bilder in der Karte schön einpassen */
+        .diary-popup img {
+            width: 100%;
+            height: auto;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>6 Wochen unterwegs</h1>
+        <p>Unser interaktives Reisetagebuch</p>
+    </header>
+
+    <!-- Hier wird die Karte reingeladen -->
+    <div id="map"></div>
+
+    <!-- Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+        // 1. Karte initialisieren (Zentriert z.B. auf Deutschland/Mitteleuropa)
+        const map = L.map('map').setView([51.1657, 10.4515], 6);
+
+        // 2. Schöne, gelassene Karten-Ansicht laden (OpenStreetMap)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap-Mitwirkende'
+        }).addTo(map);
+
+        // 3. Hier sammeln wir später alle Routenpunkte für die Verbindungslinie
+        const routeCoordinates = [];
+
+        // --- FUNKTION ZUM EINTRAGEN EINZELNER TAGE ---
+        function addTag(lat, lng, titel, datum, stellplatz, text, bildUrl) {
+            // Koordinaten für die Linie merken
+            routeCoordinates.push([lat, lng]);
+
+            // Inhalt für das Tagebuch-Fenster zusammenbauen
+            let popupInhalt = `
+                <div class="diary-popup">
+                    <h3>${titel}</h3>
+                    <div class="meta">${datum} | Stellplatz: ${stellplatz}</div>
+                    <p>${text}</p>
+            `;
+            
+            // Nur wenn ein Bild angegeben ist, wird es im Popup angezeigt
+            if(bildUrl) {
+                popupInhalt += `<img src="${bildUrl}" alt="Tagesbild">`;
+            }
+            
+            popupInhalt += `</div>`;
+
+            // Pin auf der Karte setzen
+            L.marker([lat, lng]).addTo(map).bindPopup(popupInhalt);
+        }
+
+
+        // ==========================================
+        // DEINE REISEEINTRÄGE (BEISPIELE)
+        // hier fügst du Tag für Tag deine Erlebnisse ein!
+        // ==========================================
+        
+        // Beispiel Tag 1:
+        addTag(
+            52.5200, 13.4050, 
+            "Tag 1: Der Startschuss!", 
+            "28. Juni 2026", 
+            "Naturstellplatz am Waldrand", 
+            "Endlich geht es los! Wilma ist gepackt und die ersten Kilometer liegen hinter uns. Am Abend gab es noch eine wunderschöne kleine Runde im Wald – perfekt für die ersten Makrofotos.",
+            "" // Lass es leer oder füge später den Bildnamen ein, z.B. "bilder/tag1.jpg"
+        );
+
+        // Beispiel Tag 2 (nur zum Testen, wie die Linie läuft):
+        addTag(
+            51.3401, 12.3742, 
+            "Tag 2: Weiter Richtung Süden", 
+            "29. Juni 2026", 
+            "Campingplatz am See", 
+            "Heute sind wir ein gutes Stück vorangekommen. Der Sonnenuntergang am See war traumhaft.",
+            "" 
+        );
+
+
+        // ==========================================
+        // DIE ROUTENLINIE ZEICHNEN
+        // verbindet alle eingetragenen Punkte automatisch
+        // ==========================================
+        if (routeCoordinates.length > 1) {
+            L.polyline(routeCoordinates, {
+                color: '#d96b43',       /* Farbe der Linie (passend zum Terrakotta) */
+                weight: 4,              /* Dicke der Linie */
+                opacity: 0.7,           /* Transparenz */
+                dashArray: '10, 10'     /* Macht die Linie gestrichelt für echten Roadtrip-Look */
+            }).addTo(map);
+        }
+
+    </script>
+</body>
+</html>
