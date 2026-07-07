@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mein privates Reisetagebuch</title>
     
-    <!-- Leaflet CSS für die Karte -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <style>
@@ -22,7 +21,7 @@
             height: 100%;
         }
 
-        /* Der geheime Admin-Button unten rechts */
+        /* Das Schloss unten rechts */
         #admin-lock {
             position: absolute;
             bottom: 20px;
@@ -34,11 +33,62 @@
             cursor: pointer;
             z-index: 1000;
             font-size: 1.2rem;
-            transition: transform 0.3s;
         }
 
-        #admin-lock:hover {
-            transform: scale(1.1);
+        /* Das Schreib-Fenster (Admin-Panel) */
+        #admin-panel {
+            display: none; /* Am Anfang unsichtbar */
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 300px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            z-index: 1001;
+            box-sizing: border-box;
+        }
+
+        #admin-panel h3 {
+            margin-top: 0;
+            color: #d96b43;
+        }
+
+        .input-group {
+            margin-bottom: 12px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .input-group input, .input-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .admin-btn {
+            background: #d96b43;
+            color: white;
+            border: none;
+            padding: 10px;
+            width: 100%;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .close-panel {
+            float: right;
+            cursor: pointer;
+            color: #999;
         }
 
         /* Styling für unsere linierten Tagebuch-Popups */
@@ -76,26 +126,75 @@
 </head>
 <body>
 
-    <!-- Die Karte füllt den ganzen Bildschirm -->
     <div id="map"></div>
 
-    <!-- Das geheime Schloss -->
-    <div id="admin-lock" onclick="geheimesLogin()">🔒</div>
+    <div id="admin-lock" onclick="zeigeAdminPanel()">🔒</div>
 
-    <!-- Leaflet JS für die Karte -->
+    <div id="admin-panel">
+        <span class="close-panel" onclick="schliesseAdminPanel()">✕</span>
+        <h3>Neuer Tagebucheintrag</h3>
+        
+        <div class="input-group">
+            <label>Ort / Stellplatz</label>
+            <input type="text" id="input-ort" placeholder="z.B. Südschweden am See">
+        </div>
+        
+        <div class="input-group">
+            <label>Koordinaten (wird per Klick gefüllt)</label>
+            <input type="text" id="input-coords" placeholder="55.1234, 12.1234" readonly>
+        </div>
+
+        <div class="input-group">
+            <label>Dein Text für heute</label>
+            <textarea id="input-text" rows="5" placeholder="Wie war dein Tag?"></textarea>
+        </div>
+
+        <button class="admin-btn" onclick="speichereEintrag()">Eintrag auf Karte pinnen</button>
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <script>
-        // Karte erstellen und auf Nordeuropa/Deutschland zentrieren
         const map = L.map('map').setView([55.5, 12.5], 6);
         
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap'
         }).addTo(map);
 
-        // Die Funktion, wenn du auf das Schloss klickst
-        function geheimesLogin() {
-            alert("Hier bauen wir als Nächstes dein Schreib-Fenster ein!");
+        let adminModus = false;
+
+        function zeigeAdminPanel() {
+            document.getElementById('admin-panel').style.display = 'block';
+            adminModus = true;
+            alert("Admin-Modus aktiv! Klicke jetzt irgendwo auf die Karte, um die Koordinaten für deinen Stellplatz zu holen.");
+        }
+
+        function schliesseAdminPanel() {
+            document.getElementById('admin-panel').style.display = 'none';
+            adminModus = false;
+        }
+
+        // Wenn man auf die Karte klickt, holen wir uns die Koordinaten
+        map.on('click', function(e) {
+            if (adminModus) {
+                const lat = e.latlng.lat.toFixed(4);
+                const lng = e.latlng.lng.toFixed(4);
+                // Koordinaten direkt in das Formularfeld eintragen
+                document.getElementById('input-coords').value = `${lat}, ${lng}`;
+            }
+        });
+
+        function speichereEintrag() {
+            const ort = document.getElementById('input-ort').value;
+            const coords = document.getElementById('input-coords').value;
+            const text = document.getElementById('input-text').value;
+
+            if (!ort || !coords || !text) {
+                alert("Bitte fülle alle Felder aus und klicke auf die Karte!");
+                return;
+            }
+
+            alert(`Super! Ort: ${ort}\nKoordinaten: ${coords}\n\nJetzt fehlt nur noch die Verbindung zu GitHub, damit es dauerhaft gespeichert bleibt!`);
         }
     </script>
 </body>
