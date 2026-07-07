@@ -3,141 +3,365 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unser 6-Wochen Reisetagebuch</title>
+    <title>Unser Reisetagebuch</title>
     
-    <!-- Leaflet CSS -->
+    <!-- Leaflet CSS für die Karte -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <style>
+        :root {
+            --bg-color: #f4f1ea;
+            --leather: #8c583c;
+            --paper: #fbf9f5;
+            --text: #4a3f35;
+            --accent: #d96b43;
+        }
+
         body {
             margin: 0;
             padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: var(--bg-color);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f4f1ea;
-            color: #4a3f35;
+            overflow: hidden;
+            perspective: 1500px;
         }
 
-        header {
+        /* Das Buch-Gehäuse */
+        .book-container {
+            position: relative;
+            width: 90vw;
+            max-width: 1000px;
+            height: 80vh;
+            transition: transform 0.5s ease;
+            cursor: pointer;
+        }
+
+        /* Buch-Cover (geschlossener Zustand) */
+        .book-cover {
+            position: absolute;
+            width: 50%;
+            height: 100%;
+            right: 0;
+            background-color: var(--leather);
+            border-radius: 0 10px 10px 0;
+            box-shadow: 10px 10px 20px rgba(0,0,0,0.2);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #f4f1ea;
+            transform-origin: left center;
+            transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 5;
+        }
+
+        .book-cover h1 {
+            font-size: 2rem;
             text-align: center;
-            padding: 15px;
-            background-color: #d96b43;
-            color: white;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 20px;
+            border: 2px solid #f4f1ea;
+            border-radius: 5px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
         }
 
-        header h1 { margin: 0; font-size: 1.6rem; }
-        header p { margin: 5px 0 0 0; font-style: italic; font-size: 0.9rem; }
+        /* Wenn das Buch geöffnet ist */
+        .book-container.open .book-cover {
+            transform: rotateY(-180px);
+            z-index: 1;
+        }
+
+        /* Die Innenseiten */
+        .book-pages {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            background-color: var(--paper);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            border-radius: 4px;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+        }
+
+        .book-container.open .book-pages {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* Linke Seite: Die Landkarte */
+        .page-left {
+            width: 50%;
+            height: 100%;
+            border-right: 2px dashed #e0dcd3;
+            box-sizing: border-box;
+            position: relative;
+        }
 
         #map {
-            width: 100vw;
-            height: calc(100vh - 80px);
-            background-color: #e5e3df;
+            width: 100%;
+            height: 100%;
         }
 
-        .diary-popup { max-width: 280px; font-family: sans-serif; color: #4a3f35; }
-        .diary-popup h3 { margin: 0 0 3px 0; color: #d96b43; font-size: 1.1rem; }
-        .diary-popup .meta { font-size: 0.8rem; color: #8c7a6b; margin-bottom: 6px; font-style: italic; }
-        .diary-popup p { font-size: 0.9rem; line-height: 1.4; margin: 0; }
-        .diary-popup img { width: 100%; height: auto; border-radius: 6px; margin-top: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        /* Rechte Seite: Die Einträge */
+        .page-right {
+            width: 50%;
+            height: 100%;
+            padding: 30px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(to right, #f7f5ef, var(--paper) 5%);
+        }
+
+        .entry-title {
+            color: var(--accent);
+            margin: 0 0 5px 0;
+            font-size: 1.5rem;
+        }
+
+        .entry-meta {
+            font-style: italic;
+            color: #8c7a6b;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+        }
+
+        .entry-text {
+            line-height: 1.6;
+            color: var(--text);
+            font-size: 1rem;
+            white-space: pre-line;
+        }
+
+        .entry-image {
+            width: 100%;
+            max-height: 250px;
+            object-fit: cover;
+            border-radius: 6px;
+            margin-top: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        /* Blätter-Tasten */
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: auto;
+            padding-top: 20px;
+        }
+
+        .nav-btn {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .nav-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* Schließen Kreuz */
+        .close-book {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text);
+            z-index: 10;
+        }
     </style>
 </head>
 <body>
 
-    <header>
-        <h1>6 Wochen im Van</h1>
-        <p>Unser interaktives Reisetagebuch</p>
-    </header>
+    <div class="book-container" id="myBook" onclick="openBook()">
+        <!-- Buchdeckel -->
+        <div class="book-cover">
+            <h1>6 Wochen<br>im Van</h1>
+        </div>
 
-    <div id="map"></div>
+        <!-- Buchinnenseiten -->
+        <div class="book-pages" onclick="event.stopPropagation();">
+            <div class="close-book" onclick="closeBook()">✕</div>
+            
+            <!-- Links: Karte -->
+            <div class="page-left">
+                <div id="map"></div>
+            </div>
 
-    <!-- Leaflet JavaScript -->
+            <!-- Rechts: Text -->
+            <div class="page-right">
+                <div id="entry-content">
+                    <h2 class="entry-title">Warten auf den ersten Eintrag...</h2>
+                    <div class="entry-meta">Schreib etwas in dein Google Formular!</div>
+                    <p class="entry-text">Sobald du Daten abschickst, tauchen sie hier wie von Zauberhand auf.</p>
+                </div>
+                
+                <div class="nav-buttons">
+                    <button class="nav-btn" id="prevBtn" onclick="prevPage()" disabled>◀ Zurück</button>
+                    <button class="nav-btn" id="nextBtn" onclick="nextPage()" disabled>Weiter ▶</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <script>
-        // Karte initialisieren 
-        const map = L.map('map').setView([54.5, 11.5], 5); // Start-Ansicht
+        let map;
+        let routeCoordinates = [];
+        let diaryEntries = [];
+        let currentIndex = 0;
+        let markers = [];
 
-        // Karten-Ansicht laden
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap'
-        }).addTo(map);
+        // Deine Google-Tabellen-ID
+        const sheetId = '1UhArq-ru4JDl69SXTPKx_NL3s4LgWYlOVS9bD1ySYB8';
+        const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
 
-        const routeCoordinates = [];
+        function openBook() {
+            document.getElementById('myBook').classList.add('open');
+            // Karte neu berechnen, da sie im versteckten Zustand geladen wurde
+            setTimeout(() => { if(map) map.invalidateSize(); }, 400);
+        }
 
-        // Die magische Funktion, die alles verarbeitet
-        function registerTag(tagNummer, koordinaten, datum, stellplatz, text, bild) {
-            if (!koordinaten || koordinaten.length !== 2 || koordinaten[0] === 0) return;
-            
-            routeCoordinates.push(koordinaten);
+        function closeBook() {
+            document.getElementById('myBook').classList.remove('open');
+        }
 
-            let popupInhalt = `
-                <div class="diary-popup">
-                    <h3>Tag ${tagNummer}</h3>
-                    <div class="meta">${datum} ${stellplatz ? '| ' + stellplatz : ''}</div>
-                    <p>${text}</p>
-            `;
-            
-            if(bild) {
-                popupInhalt += `<img src="${bild}" alt="Foto">`;
+        // Karte initialisieren
+        function initMap() {
+            map = L.map('map').setView([54.5, 11.5], 5);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(map);
+        }
+
+        // Daten aus Google Tabelle laden
+        async function loadData() {
+            try {
+                const response = await fetch(csvUrl);
+                const data = await response.text();
+                parseCSV(data);
+            } catch (error) {
+                console.error("Fehler beim Laden der Google-Daten:", error);
             }
-            popupInhalt += `</div>`;
-
-            L.marker(koordinaten).addTo(map).bindPopup(popupInhalt);
         }
 
-        // ==========================================================
-        // DEIN AUSFÜLLBUCH FÜR UNTERWEGS
-        // Trage einfach jeden Abend hier deine Erlebnisse ein!
-        // Wenn du bei [0, 0] die echten Koordinaten einträgst, erscheint der Tag auf der Karte.
-        // ==========================================================
+        // Super einfacher CSV-Parser für Google Sheets
+        function parseCSV(text) {
+            const lines = text.split('\n');
+            diaryEntries = [];
+            routeCoordinates = [];
+            
+            // Zeile 0 sind die Überschriften, wir starten bei 1
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                
+                // Spalten trennen (sucht nach Kommas, ignoriert Kommas in Anführungszeichen)
+                const matches = lines[i].match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+                if (!matches || matches.length < 5) continue;
 
-        registerTag(1,  [52.52, 13.40], "Start", "Zuhause", "Wilma ist fertig gepackt und die 6 Wochen Abenteuer beginnen genau jetzt!", "");
-        registerTag(2,  [0, 0], "", "", "", "");
-        registerTag(3,  [0, 0], "", "", "", "");
-        registerTag(4,  [0, 0], "", "", "", "");
-        registerTag(5,  [0, 0], "", "", "", "");
-        registerTag(6,  [0, 0], "", "", "", "");
-        registerTag(7,  [0, 0], "", "", "", "");
-        registerTag(8,  [0, 0], "", "", "", "");
-        registerTag(9,  [0, 0], "", "", "", "");
-        registerTag(10, [0, 0], "", "", "", "");
-        registerTag(11, [0, 0], "", "", "", "");
-        registerTag(12, [0, 0], "", "", "", "");
-        registerTag(13, [0, 0], "", "", "", "");
-        registerTag(14, [0, 0], "", "", "", "");
-        registerTag(15, [0, 0], "", "", "", "");
-        registerTag(16, [0, 0], "", "", "", "");
-        registerTag(17, [0, 0], "", "", "", "");
-        registerTag(18, [0, 0], "", "", "", "");
-        registerTag(19, [0, 0], "", "", "", "");
-        registerTag(20, [0, 0], "", "", "", "");
-        registerTag(21, [0, 0], "", "", "", "");
-        registerTag(22, [0, 0], "", "", "", "");
-        registerTag(23, [0, 0], "", "", "", "");
-        registerTag(24, [0, 0], "", "", "", "");
-        registerTag(25, [0, 0], "", "", "", "");
-        registerTag(26, [0, 0], "", "", "", "");
-        registerTag(27, [0, 0], "", "", "", "");
-        registerTag(28, [0, 0], "", "", "", "");
-        registerTag(29, [0, 0], "", "", "", "");
-        registerTag(30, [0, 0], "", "", "", "");
-        registerTag(31, [0, 0], "", "", "", "");
-        registerTag(32, [0, 0], "", "", "", "");
-        registerTag(33, [0, 0], "", "", "", "");
-        registerTag(34, [0, 0], "", "", "", "");
-        registerTag(35, [0, 0], "", "", "", "");
-        registerTag(36, [0, 0], "", "", "", "");
-        registerTag(37, [0, 0], "", "", "", "");
-        registerTag(38, [0, 0], "", "", "", "");
-        registerTag(39, [0, 0], "", "", "", "");
-        registerTag(40, [0, 0], "", "", "", "");
-        registerTag(41, [0, 0], "", "", "", "");
-        registerTag(42, [0, 0], "", "", "", "");
+                const clean = item => item.replace(/^"|"$|"/g, '').trim();
 
-        // Zeichnet die automatische Route
-        if (routeCoordinates.length > 1) {
-            L.polyline(routeCoordinates, { color: '#d96b43', weight: 4, opacity: 0.8, dashArray: '8, 12' }).addTo(map);
+                const tagNummer = clean(matches[1]);
+                const datum = clean(matches[2]);
+                const stellplatz = clean(matches[3]);
+                const coordsText = clean(matches[4]);
+                const textInhalt = clean(matches[5] || "");
+                const bildUrl = matches[6] ? clean(matches[6]) : "";
+
+                // Koordinaten trennen
+                let coords = [0, 0];
+                if (coordsText.includes(',')) {
+                    const parts = coordsText.split(',');
+                    coords = [parseFloat(parts[0]), parseFloat(parts[1])];
+                }
+
+                if (coords[0] !== 0) {
+                    diaryEntries.push({
+                        tag: tagNummer,
+                        datum: datum,
+                        ort: stellplatz,
+                        coords: coords,
+                        text: textInhalt,
+                        bild: bildUrl
+                    });
+                    routeCoordinates.push(coords);
+                }
+            }
+
+            // Nach Tagen sortieren
+            diaryEntries.sort((a, b) => parseInt(a.tag) - parseInt(b.tag));
+
+            if (diaryEntries.length > 0) {
+                displayEntries();
+            }
         }
+
+        function displayEntries() {
+            // Alte Marker löschen
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+
+            // Marker setzen und Route zeichnen
+            diaryEntries.forEach((entry, idx) => {
+                const marker = L.marker(entry.coords).addTo(map)
+                    .bindPopup(`<b>Tag ${entry.tag}</b><br>${entry.ort}`);
+                markers.push(marker);
+            });
+
+            if (routeCoordinates.length > 1) {
+                L.polyline(routeCoordinates, { color: '#d96b43', weight: 4, opacity: 0.8, dashArray: '8, 12' }).addTo(map);
+            }
+
+            showPage(0);
+        }
+
+        function showPage(index) {
+            if (diaryEntries.length === 0) return;
+            currentIndex = index;
+            const entry = diaryEntries[currentIndex];
+
+            let html = `
+                <h2 class="entry-title">Tag ${entry.tag}: ${entry.ort}</h2>
+                <div class="entry-meta">${entry.datum}</div>
+                <p class="entry-text">${entry.text}</p>
+            `;
+
+            // Falls ein Foto-Link existiert (wird später verfeinert)
+            if (entry.bild && entry.bild.startsWith('http')) {
+                html += `<img class="entry-image" src="${entry.bild}" alt="Urlaubsfoto">`;
+            }
+
+            document.getElementById('entry-content').innerHTML = html;
+
+            // Karte auf diesen Punkt zentrieren
+            map.setView(entry.coords, 8);
+            markers[currentIndex].openPopup();
+
+            // Buttons aktivieren/deaktivieren
+            document.getElementById('prevBtn').disabled = (currentIndex === 0);
+            document.getElementById('nextBtn').disabled = (currentIndex === diaryEntries.length - 1);
+        }
+
+        function prevPage() { if (currentIndex > 0) showPage(currentIndex - 1); }
+        function nextPage() { if (currentIndex < diaryEntries.length - 1) showPage(currentIndex + 1); }
+
+        // Starten
+        initMap();
+        loadData();
     </script>
 </body>
 </html>
